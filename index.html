@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bauprojekt — Dokumente</title>
+    <title>Bauprojekt S9 — Dokumente</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
@@ -33,7 +33,7 @@
                 />
               </svg>
             </span>
-            <span class="brand-name">Bauprojekt</span>
+            <span class="brand-name">Bauprojekt <em>S9</em></span>
           </a>
 
           <label class="sidebar-search">
@@ -46,7 +46,7 @@
           </label>
 
           <nav class="sidebar-nav" aria-label="Hauptnavigation">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#cockpit" data-view="cockpit">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
                 <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
@@ -55,14 +55,14 @@
               </svg>
               Cockpit
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#projekt" data-view="projekt">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M4 18V8l8-4 8 4v10" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
                 <path d="M9 18v-5h6v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
               </svg>
               Projekt
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#finanzen" data-view="finanzen">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M4 7.5h16M6 7.5V18a1.5 1.5 0 001.5 1.5h9A1.5 1.5 0 0018 18V7.5M9 7.5V6a2 2 0 012-2h2a2 2 0 012 2v1.5"
@@ -73,7 +73,7 @@
               </svg>
               Finanzen
             </a>
-            <a class="nav-link is-active" href="#" aria-current="page">
+            <a class="nav-link is-active" href="#dokumente" data-view="dokumente" aria-current="page">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M7 3.5h7l4 4V20a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 20V5A1.5 1.5 0 017 3.5z"
@@ -90,7 +90,7 @@
 
           <p class="nav-section-label">Admin</p>
           <nav class="sidebar-nav sidebar-nav-admin" aria-label="Admin">
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#account" data-view="account">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="8" r="3.25" stroke="currentColor" stroke-width="1.5" />
                 <path
@@ -102,7 +102,7 @@
               </svg>
               Account
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#support" data-view="support">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="8.25" stroke="currentColor" stroke-width="1.5" />
                 <path d="M12 10.5V16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -110,7 +110,7 @@
               </svg>
               Support
             </a>
-            <a class="nav-link" href="#">
+            <a class="nav-link" href="#einstellungen" data-view="einstellungen">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" />
                 <path
@@ -154,17 +154,50 @@
               <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
             </svg>
           </button>
-          <nav class="breadcrumbs" aria-label="Brotkrumen">
-            <span>Dokumente</span>
+          <nav class="breadcrumbs" aria-label="Brotkrumen" id="breadcrumbs">
+            <span id="crumb-section">Dokumente</span>
             <span class="crumb-sep" aria-hidden="true">/</span>
-            <strong>Offerten &amp; Rechnungen</strong>
+            <strong id="crumb-page">Übersicht</strong>
           </nav>
         </header>
 
         <main class="content">
+          <section class="view" id="view-cockpit" data-view-panel="cockpit" hidden>
+            <div class="page-title-row">
+              <h1>Cockpit</h1>
+              <p class="page-subtitle">Übersicht über das Bauprojekt — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
+            </div>
+          </section>
+
+          <section class="view" id="view-projekt" data-view-panel="projekt" hidden>
+            <div class="page-title-row">
+              <h1>Projekt</h1>
+              <p class="page-subtitle">Projektdaten und Status — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
+            </div>
+          </section>
+
+          <section class="view" id="view-finanzen" data-view-panel="finanzen" hidden>
+            <div class="page-title-row">
+              <h1>Finanzen</h1>
+              <p class="page-subtitle">Kosten, Offerten und Rechnungen im Überblick — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
+            </div>
+          </section>
+
+          <section class="view is-active" id="view-dokumente" data-view-panel="dokumente">
           <div class="page-title-row">
             <h1>Dokumente</h1>
-            <p class="page-subtitle">PDFs hochladen und Offerten sowie Rechnungen verwalten.</p>
+            <p class="page-subtitle">
+              PDFs aus Google Drive und lokale Uploads an einem Ort.
+            </p>
           </div>
 
           <section class="kpi-grid" aria-label="Kennzahlen">
@@ -219,24 +252,22 @@
                 <span class="kpi-icon" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M12 4v12m0-12l-5 5m5-5l5 5M5 19h14"
+                      d="M7 3.5h7l4 4V20a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 20V5A1.5 1.5 0 017 3.5z"
                       stroke="currentColor"
                       stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
                     />
                   </svg>
                 </span>
-                <span class="kpi-label">Gesamtgröße</span>
+                <span class="kpi-label">Sonstige</span>
               </div>
-              <p class="kpi-value kpi-value-sm" id="kpi-size">0 B</p>
+              <p class="kpi-value" id="kpi-sonstige">0</p>
             </article>
           </section>
 
           <section class="panel upload-panel" aria-labelledby="upload-heading">
             <div class="panel-head">
               <h2 id="upload-heading">PDF hochladen</h2>
-              <p class="panel-hint">Nur PDF-Dateien · Drag &amp; Drop oder Dateiauswahl</p>
+              <p class="panel-hint">Nur PDF-Dateien · am Computer per Drag &amp; Drop, am iPhone über Dateien</p>
             </div>
 
             <div
@@ -244,7 +275,7 @@
               class="dropzone"
               role="button"
               tabindex="0"
-              aria-describedby="dropzone-hint"
+              aria-describedby="dropzone-hint iphone-upload-tip"
             >
               <input
                 id="file-input"
@@ -265,41 +296,142 @@
                     />
                   </svg>
                 </span>
-                <p class="dropzone-title">PDF hierher ziehen</p>
+                <p class="dropzone-title">PDF auswählen</p>
                 <p id="dropzone-hint" class="dropzone-hint">
-                  oder <span class="linkish">Datei auswählen</span>
+                  Tippen zum Auswählen · am Mac auch Drag &amp; Drop
                 </p>
               </div>
             </div>
+            <p id="iphone-upload-tip" class="upload-tip">
+              <strong>iPhone:</strong> Im PDF auf Teilen tippen →
+              <em>In Dateien speichern</em> → hier tippen → das PDF unter
+              <em>Zuletzt</em> wählen. Direktes Teilen in die App geht bei
+              Web-Apps auf dem iPhone leider nicht.
+            </p>
             <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
           </section>
 
           <section class="panel table-panel" aria-labelledby="docs-heading">
             <div class="panel-head panel-head-row">
               <div>
-                <h2 id="docs-heading">Hochgeladene Dokumente</h2>
+                <h2 id="docs-heading">Dokumente</h2>
                 <p id="doc-count" class="panel-hint">0 Dokumente</p>
+              </div>
+              <div class="drive-actions drive-actions-inline">
+                <button type="button" class="btn-secondary" id="drive-sync-btn">
+                  Aktualisieren
+                </button>
               </div>
             </div>
 
-            <div class="table-wrap">
-              <table class="docs-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Dateiname</th>
-                    <th scope="col">Typ</th>
-                    <th scope="col">Größe</th>
-                    <th scope="col">Hochgeladen</th>
-                    <th scope="col">Status</th>
-                    <th scope="col"><span class="visually-hidden">Aktionen</span></th>
-                  </tr>
-                </thead>
-                <tbody id="docs-tbody">
-                  <tr class="empty-row">
-                    <td colspan="6">Noch keine Dokumente. Lade ein PDF hoch, um zu starten.</td>
-                  </tr>
-                </tbody>
-              </table>
+            <label class="field doc-picker-field">
+              <span>Dokument auswählen</span>
+              <select id="doc-picker" class="doc-picker">
+                <option value="">— Bitte wählen —</option>
+              </select>
+            </label>
+
+            <div id="doc-detail" class="doc-detail" hidden>
+              <div class="doc-detail-main">
+                <p class="doc-detail-name" id="doc-detail-name"></p>
+                <p class="doc-detail-meta" id="doc-detail-meta"></p>
+              </div>
+              <div class="doc-detail-controls">
+                <label class="field doc-detail-type">
+                  <span>Typ</span>
+                  <select id="doc-detail-type" class="type-select">
+                    <option value="Offerte">Offerte</option>
+                    <option value="Rechnung">Rechnung</option>
+                    <option value="Sonstige">Sonstige</option>
+                  </select>
+                </label>
+                <div class="doc-detail-actions">
+                  <a
+                    class="btn-link"
+                    id="doc-detail-open"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                    hidden
+                    >In Drive öffnen</a
+                  >
+                  <button type="button" class="btn-delete" id="doc-detail-delete" hidden>
+                    Entfernen
+                  </button>
+                </div>
+              </div>
+              <div id="pdf-viewer" class="pdf-viewer" hidden>
+                <p id="pdf-viewer-status" class="pdf-viewer-status" role="status"></p>
+                <iframe
+                  id="pdf-frame"
+                  class="pdf-frame"
+                  title="PDF-Vorschau"
+                  hidden
+                ></iframe>
+              </div>
+              <dl id="doc-extract" class="doc-extract" hidden>
+                <div class="doc-extract-row" data-field="firma">
+                  <dt>Firma / Absender</dt>
+                  <dd id="doc-extract-firma">—</dd>
+                </div>
+                <div class="doc-extract-row" data-field="datum">
+                  <dt>Datum</dt>
+                  <dd id="doc-extract-datum">—</dd>
+                </div>
+                <div class="doc-extract-row" data-field="betrag">
+                  <dt>Betrag inkl. MwSt</dt>
+                  <dd id="doc-extract-betrag">—</dd>
+                </div>
+                <div class="doc-extract-row" data-field="kurzbeschrieb">
+                  <dt>Kurzbeschrieb</dt>
+                  <dd id="doc-extract-kurzbeschrieb">—</dd>
+                </div>
+              </dl>
+              <p class="doc-detail-status">
+                <span class="status-pill" id="doc-detail-status">—</span>
+              </p>
+            </div>
+
+            <p id="doc-empty-hint" class="panel-hint doc-empty-hint">
+              Noch keine Dokumente. Tippe auf Aktualisieren oder lade ein PDF hoch.
+            </p>
+          </section>
+
+          <details class="drive-footer">
+            <summary>Google Drive — Status</summary>
+            <div class="drive-footer-body">
+              <p id="drive-status" class="panel-hint">Lade Dokumente…</p>
+            </div>
+          </details>
+          </section>
+
+          <section class="view" id="view-account" data-view-panel="account" hidden>
+            <div class="page-title-row">
+              <h1>Account</h1>
+              <p class="page-subtitle">Konto und Zugangsdaten — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
+            </div>
+          </section>
+
+          <section class="view" id="view-support" data-view-panel="support" hidden>
+            <div class="page-title-row">
+              <h1>Support</h1>
+              <p class="page-subtitle">Hilfe und Kontakt — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
+            </div>
+          </section>
+
+          <section class="view" id="view-einstellungen" data-view-panel="einstellungen" hidden>
+            <div class="page-title-row">
+              <h1>Einstellungen</h1>
+              <p class="page-subtitle">App- und Projekt-Einstellungen — Inhalt folgt.</p>
+            </div>
+            <div class="panel empty-panel">
+              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
             </div>
           </section>
         </main>
