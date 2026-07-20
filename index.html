@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bauprojekt S9</title>
+    <meta name="theme-color" content="#1a3232" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="S9" />
+    <meta name="application-name" content="S9" />
+    <link rel="icon" href="assets/icon-s9.svg" type="image/svg+xml" />
+    <link rel="icon" href="assets/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="manifest.webmanifest" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -176,42 +185,20 @@
 
         <main class="content">
           <section class="view is-active" id="view-home" data-view-panel="home">
-            <section class="home-hero" aria-label="Bauprojekt S9">
-              <p class="home-brand">Bauprojekt <em>S9</em></p>
-              <h1 class="home-headline">Silbergasse 9</h1>
-              <p class="home-lead">Lage, Bestand und Vision — als goldene Projektskizzen.</p>
-            </section>
-
-            <section class="home-gallery" aria-label="Projektskizzen">
-              <figure class="home-sketch home-sketch-featured">
+            <section class="home-stage" aria-label="Bauprojekt S9">
+              <div class="home-stage-copy">
+                <p class="home-brand">Bauprojekt <em>S9</em></p>
+                <h1 class="home-headline">Silbergasse 9</h1>
+                <p class="home-lead">Lageplan als feine Goldskizze.</p>
+              </div>
+              <figure class="home-sketch-solo">
                 <img
                   src="assets/home-skizze-lageplan.jpg"
-                  alt="Goldskizze Lageplan Silbergasse 9"
+                  alt="Goldskizze Lageplan Silbergasse 9 auf grünem Grund"
                   width="1600"
                   height="900"
                   loading="eager"
                 />
-                <figcaption>Lageplan</figcaption>
-              </figure>
-              <figure class="home-sketch">
-                <img
-                  src="assets/home-skizze-bestand.jpg"
-                  alt="Goldskizze Bestand Gebäude"
-                  width="1600"
-                  height="900"
-                  loading="lazy"
-                />
-                <figcaption>Bestand</figcaption>
-              </figure>
-              <figure class="home-sketch">
-                <img
-                  src="assets/home-skizze-vision.jpg"
-                  alt="Goldskizze Vision Neubau"
-                  width="1600"
-                  height="900"
-                  loading="lazy"
-                />
-                <figcaption>Vision</figcaption>
               </figure>
             </section>
           </section>

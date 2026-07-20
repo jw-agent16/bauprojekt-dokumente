@@ -1,0 +1,23 @@
+{
+  "name": "Bauprojekt S9",
+  "short_name": "S9",
+  "description": "Bauprojekt Silbergasse 9",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a3232",
+  "theme_color": "#1a3232",
+  "icons": [
+    {
+      "src": "assets/icon-s9-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-s9-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
