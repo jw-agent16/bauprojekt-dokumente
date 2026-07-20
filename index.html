@@ -86,6 +86,18 @@
               Dokumente
               <span id="nav-badge" class="nav-badge" hidden>0</span>
             </a>
+            <a class="nav-link" href="#plaene" data-view="plaene">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M4.5 5.5h15v13h-15zM8 5.5V18.5M4.5 10h15"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Pläne
+              <span id="nav-badge-plaene" class="nav-badge" hidden>0</span>
+            </a>
           </nav>
 
           <p class="nav-section-label">Admin</p>
@@ -270,7 +282,7 @@
           </div>
 
           <section class="kpi-grid" aria-label="Schnellzugriff">
-            <button type="button" class="kpi-card kpi-card-action" id="kpi-upload" aria-label="PDF hochladen">
+            <button type="button" class="kpi-card kpi-card-action" id="kpi-upload" aria-label="Datei hochladen">
               <div class="kpi-head">
                 <span class="kpi-icon" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -283,9 +295,9 @@
                     />
                   </svg>
                 </span>
-                <span class="kpi-label">PDF Upload</span>
+                <span class="kpi-label">Upload</span>
               </div>
-              <p class="kpi-action-text">Datei wählen</p>
+              <p class="kpi-action-text">PDF / JPG</p>
             </button>
 
             <button type="button" class="kpi-card kpi-card-action" id="kpi-offerten" data-scroll-type="Offerte">
@@ -318,27 +330,28 @@
               <p class="kpi-value" id="kpi-rechnungen-count">0</p>
             </button>
 
-            <button type="button" class="kpi-card kpi-card-action" id="kpi-sonstige" data-scroll-type="Sonstige">
+            <button type="button" class="kpi-card kpi-card-action" id="kpi-plaene" data-view-jump="plaene">
               <div class="kpi-head">
                 <span class="kpi-icon" aria-hidden="true">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M7 3.5h7l4 4V20a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 20V5A1.5 1.5 0 017 3.5z"
+                      d="M4.5 5.5h15v13h-15zM8 5.5V18.5M4.5 10h15"
                       stroke="currentColor"
                       stroke-width="1.5"
+                      stroke-linejoin="round"
                     />
                   </svg>
                 </span>
-                <span class="kpi-label">Sonstige</span>
+                <span class="kpi-label">Pläne</span>
               </div>
-              <p class="kpi-value" id="kpi-sonstige-count">0</p>
+              <p class="kpi-value" id="kpi-plaene-count">0</p>
             </button>
           </section>
 
           <input
             id="file-input"
             type="file"
-            accept="application/pdf,.pdf"
+            accept="application/pdf,.pdf,image/jpeg,.jpg,.jpeg,image/png,.png,image/webp,.webp"
             multiple
             hidden
           />
@@ -375,6 +388,7 @@
                   <select id="doc-detail-type" class="type-select">
                     <option value="Offerte">Offerte</option>
                     <option value="Rechnung">Rechnung</option>
+                    <option value="Bauplan">Bauplan</option>
                     <option value="Sonstige">Sonstige</option>
                   </select>
                 </label>
@@ -401,6 +415,7 @@
                   title="PDF-Vorschau"
                   hidden
                 ></iframe>
+                <img id="preview-image" class="preview-image" alt="Bildvorschau" hidden />
               </div>
               <dl id="doc-extract" class="doc-extract" hidden>
                 <div class="doc-extract-row" data-field="firma">
@@ -436,6 +451,30 @@
               <p id="drive-status" class="panel-hint">Lade Dokumente…</p>
             </div>
           </details>
+          </section>
+
+          <section class="view" id="view-plaene" data-view-panel="plaene" hidden>
+            <div class="page-title-row">
+              <h1>Pläne</h1>
+              <p class="page-subtitle">
+                Baupläne und Grundrisse — von der KI erkannt oder manuell als Typ «Bauplan» gesetzt.
+              </p>
+            </div>
+            <section class="panel">
+              <div class="panel-head panel-head-row">
+                <div>
+                  <h2>Baupläne / Grundrisse</h2>
+                  <p id="plaene-count" class="panel-hint">0 Pläne</p>
+                </div>
+                <button type="button" class="btn-secondary" id="plaene-upload-btn">
+                  Plan hochladen
+                </button>
+              </div>
+              <div id="plaene-grid" class="plaene-grid"></div>
+              <p id="plaene-empty" class="panel-hint">
+                Noch keine Pläne. Lade JPG/PDF hoch oder setze den Dokumenttyp auf «Bauplan».
+              </p>
+            </section>
           </section>
 
           <section class="view" id="view-account" data-view-panel="account" hidden>

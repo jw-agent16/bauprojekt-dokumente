@@ -802,6 +802,52 @@ select {
   background: #fff;
 }
 
+.preview-image {
+  display: block;
+  width: 100%;
+  max-height: min(70vh, 36rem);
+  object-fit: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #f3f5f4;
+}
+
+.plaene-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.plaene-card {
+  display: grid;
+  gap: 0.35rem;
+  text-align: left;
+  padding: 0.95rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: #f7f8f6;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.plaene-card:hover {
+  border-color: rgba(184, 142, 93, 0.45);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.plaene-card-name {
+  font-weight: 700;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.plaene-card-meta {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
 .doc-extract {
   margin: 0;
   display: grid;

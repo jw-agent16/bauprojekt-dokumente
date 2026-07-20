@@ -106,7 +106,7 @@ function doGet(e) {
   try {
     var folder = resolveEingangFolder_();
     var extractions = loadExtractionsMap_();
-    var files = listPdfsInFolder_(folder).map(function (file) {
+    var files = listDocsInFolder_(folder).map(function (file) {
       var extra = extractions[file.id] || null;
       if (extra) {
         file.docType = extra.docType;
@@ -166,7 +166,7 @@ function servePdf_(fileId) {
     return jsonResponse_({
       ok: true,
       name: file.getName(),
-      mimeType: "application/pdf",
+      mimeType: blob.getContentType() || "application/pdf",
       base64: Utilities.base64Encode(bytes),
     });
   } catch (err) {
@@ -179,9 +179,9 @@ function servePdf_(fileId) {
 
 function isPdfInEingang_(fileId) {
   var folder = resolveEingangFolder_();
-  var files = folder.getFiles();
-  while (files.hasNext()) {
-    if (files.next().getId() === fileId) return true;
+  var files = listDocsInFolder_(folder);
+  for (var i = 0; i < files.length; i++) {
+    if (files[i].id === fileId) return true;
   }
   return false;
 }
@@ -217,11 +217,17 @@ function countFiles_(folder) {
 }
 
 function listPdfsInFolder_(folder) {
+  return listDocsInFolder_(folder).filter(function (f) {
+    return String(f.mimeType || "").indexOf("pdf") !== -1 || /\.pdf$/i.test(f.name || "");
+  });
+}
+
+function listDocsInFolder_(folder) {
   var out = [];
   var files = folder.getFiles();
   while (files.hasNext()) {
     var file = files.next();
-    var name = file.getName() || "dokument.pdf";
+    var name = file.getName() || "dokument";
     var mime = "";
     try {
       mime = file.getMimeType() || "";
@@ -230,7 +236,10 @@ function listPdfsInFolder_(folder) {
       mime === "application/pdf" ||
       String(mime).indexOf("pdf") !== -1 ||
       /\.pdf$/i.test(name);
-    if (!isPdf) continue;
+    var isImage =
+      String(mime).indexOf("image/") === 0 ||
+      /\.(jpe?g|png|webp|gif)$/i.test(name);
+    if (!isPdf && !isImage) continue;
 
     out.push({
       id: file.getId(),
@@ -239,7 +248,7 @@ function listPdfsInFolder_(folder) {
       createdTime: file.getDateCreated().toISOString(),
       modifiedTime: file.getLastUpdated().toISOString(),
       webViewLink: file.getUrl(),
-      mimeType: mime || "application/pdf",
+      mimeType: mime || (isImage ? "image/jpeg" : "application/pdf"),
     });
   }
 
@@ -282,9 +291,9 @@ function dokumenteAuslesen() {
   var folder = resolveEingangFolder_();
   var store = loadExtractionsStore_();
   var existing = store.map;
-  var files = listPdfsInFolder_(folder);
+  var files = listDocsInFolder_(folder);
   var pending = files.filter(function (f) {
-    return !existing[f.id];
+    return !existing[f.id] || isFailedExtraction_(existing[f.id]);
   });
 
   var limit = Math.min(pending.length, CONFIG.maxExtractionsPerRun || 5);
@@ -310,15 +319,7 @@ function dokumenteAuslesen() {
     } catch (err) {
       errors++;
       Logger.log('Fehler bei "%s": %s', meta.name, err);
-      existing[meta.id] = {
-        docType: "Sonstige",
-        firma: "",
-        datum: "",
-        betrag: "",
-        kurzbeschrieb: "Auslesen fehlgeschlagen: " + String(err),
-        fileName: meta.name,
-        updatedAt: new Date().toISOString(),
-      };
+      // Fehlversuch nicht speichern — nächster Lauf versucht erneut
     }
   }
 
@@ -328,8 +329,30 @@ function dokumenteAuslesen() {
     "KI-Auslese fertig. Neu: %s | Fehler: %s | Offen danach: %s",
     done,
     errors,
-    pending.length - limit
+    pending.length - done
   );
+}
+
+function isFailedExtraction_(entry) {
+  if (!entry) return true;
+  return String(entry.kurzbeschrieb || "").indexOf("Auslesen fehlgeschlagen") !== -1;
+}
+
+/**
+ * Fehlversuche löschen, danach dokumenteAuslesen() erneut ausführen.
+ */
+function fehlgeschlageneExtraktionenZuruecksetzen() {
+  var store = loadExtractionsStore_();
+  var map = store.map;
+  var removed = 0;
+  Object.keys(map).forEach(function (id) {
+    if (isFailedExtraction_(map[id])) {
+      delete map[id];
+      removed++;
+    }
+  });
+  saveExtractionsStore_(store.file, map);
+  Logger.log("Fehlversuche entfernt: %s", removed);
 }
 
 function getGeminiApiKey_() {
@@ -385,20 +408,21 @@ function extractPdfWithGemini_(file, apiKey) {
   var mime = blob.getContentType() || "application/pdf";
 
   var prompt =
-    "Du analysierst ein Bauprojekt-PDF (Schweiz/DE). Antworte NUR mit gültigem JSON, ohne Markdown.\n" +
+    "Du analysierst ein Bauprojekt-Dokument (PDF oder Bild, Schweiz/DE). Antworte NUR mit gültigem JSON, ohne Markdown.\n" +
     "Schema:\n" +
     "{\n" +
-    '  "docType": "Offerte" | "Rechnung" | "Sonstige",\n' +
+    '  "docType": "Offerte" | "Rechnung" | "Bauplan" | "Sonstige",\n' +
     '  "firma": "Absender/Firma oder leer",\n' +
     '  "datum": "Dokumentdatum als YYYY-MM-DD oder leer",\n' +
-    '  "betrag": "Bruttobetrag inkl. MwSt als Text z.B. \\"1\'234.50 CHF\\" oder leer",\n' +
+    '  "betrag": "Bruttobetrag inkl. MwSt als Text z.B. \\\"1\'234.50 CHF\\\" oder leer",\n' +
     '  "kurzbeschrieb": "1-2 Sätze worum es geht"\n' +
     "}\n" +
     "Regeln:\n" +
     "- Offerte: Angebot, Kostenvoranschlag, Offerte, Quote\n" +
     "- Rechnung: Rechnung, Invoice, Faktura, Zahlungsaufforderung\n" +
-    "- Sonstige: alles andere (Pläne, Bestätigungen ohne klaren Typ, etc.)\n" +
-    "- Bei Sonstige: firma/datum/betrag leer lassen, nur kurzbeschrieb füllen\n" +
+    "- Bauplan: Grundriss, Bauplan, Lageplan, Schnitt, Fassade, Architekturplan, Werkplan\n" +
+    "- Sonstige: alles andere (Bestätigungen ohne klaren Typ, etc.)\n" +
+    "- Bei Bauplan/Sonstige: firma/datum/betrag leer lassen, nur kurzbeschrieb füllen\n" +
     "- Bei Offerte/Rechnung: firma, datum, betrag (inkl. MwSt) und kurzbeschrieb so gut wie möglich füllen";
 
   var payload = {
@@ -446,13 +470,13 @@ function extractPdfWithGemini_(file, apiKey) {
 
   var data = JSON.parse(jsonText);
   var docType = String(data.docType || "Sonstige");
-  if (["Offerte", "Rechnung", "Sonstige"].indexOf(docType) === -1) {
+  if (["Offerte", "Rechnung", "Bauplan", "Sonstige"].indexOf(docType) === -1) {
     docType = "Sonstige";
   }
 
-  if (docType === "Sonstige") {
+  if (docType === "Sonstige" || docType === "Bauplan") {
     return {
-      docType: "Sonstige",
+      docType: docType,
       firma: "",
       datum: "",
       betrag: "",

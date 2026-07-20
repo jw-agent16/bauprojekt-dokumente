@@ -18,7 +18,14 @@ const navBadge = document.getElementById("nav-badge");
 const kpiUpload = document.getElementById("kpi-upload");
 const kpiOfferten = document.getElementById("kpi-offerten-count");
 const kpiRechnungen = document.getElementById("kpi-rechnungen-count");
-const kpiSonstige = document.getElementById("kpi-sonstige-count");
+const kpiPlaene = document.getElementById("kpi-plaene-count");
+const navBadgePlaene = document.getElementById("nav-badge-plaene");
+const plaeneGrid = document.getElementById("plaene-grid");
+const plaeneCount = document.getElementById("plaene-count");
+const plaeneEmpty = document.getElementById("plaene-empty");
+const plaeneUploadBtn = document.getElementById("plaene-upload-btn");
+const previewImage = document.getElementById("preview-image");
+const DOC_TYPES = ["Offerte", "Rechnung", "Bauplan", "Sonstige"];
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
 const topbarTitle = document.getElementById("topbar-title");
@@ -71,6 +78,7 @@ const VIEW_TITLES = {
   projekt: "Projekt",
   finanzen: "Finanzen",
   dokumente: "Dokumente",
+  plaene: "Pläne",
   account: "Account",
   support: "Support",
   einstellungen: "Einstellungen",
@@ -122,6 +130,7 @@ function showView(viewId) {
   if (topbarTitle) topbarTitle.textContent = title;
   document.title = `Bauprojekt S9 — ${title}`;
   if (viewId === "finanzen") renderFinanzen();
+  if (viewId === "plaene") renderPlaene();
 }
 
 function initNavigation() {
@@ -193,6 +202,17 @@ document.querySelectorAll("[data-scroll-type]").forEach((btn) => {
   });
 });
 
+document.querySelectorAll("[data-view-jump]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const view = btn.getAttribute("data-view-jump");
+    if (!view) return;
+    showView(view);
+    history.replaceState(null, "", `#${view}`);
+  });
+});
+
+plaeneUploadBtn?.addEventListener("click", () => openFilePicker());
+
 if (kvAmountInput) {
   kvAmountInput.value = kvState.amount != null ? formatInputAmount(kvState.amount) : "";
   kvAmountInput.addEventListener("change", () => {
@@ -217,8 +237,8 @@ if (kvFileName && kvState.fileName) {
 kvFileInput?.addEventListener("change", () => {
   const file = kvFileInput.files?.[0];
   if (!file) return;
-  if (!isPdf(file)) {
-    setStatus("Nur PDF-Dateien sind als KV erlaubt.", true);
+  if (!isAllowedFile(file)) {
+    setStatus("Nur PDF- oder Bilddateien sind als KV erlaubt.", true);
     kvFileInput.value = "";
     return;
   }
@@ -297,19 +317,48 @@ function clearPdfViewer() {
     pdfFrame.hidden = true;
     pdfFrame.removeAttribute("src");
   }
+  if (previewImage) {
+    previewImage.hidden = true;
+    previewImage.removeAttribute("src");
+  }
   if (pdfViewer) pdfViewer.hidden = true;
   if (pdfViewerStatus) pdfViewerStatus.textContent = "";
 }
 
 /**
- * @param {{ source?: string, driveFileId?: string, id: string } | null | undefined} doc
+ * @param {string | undefined} name
+ * @param {string | undefined} mime
+ */
+function isImageDoc(name, mime) {
+  const m = String(mime || "").toLowerCase();
+  if (m.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp|gif)$/i.test(String(name || ""));
+}
+
+/**
+ * @param {{ source?: string, driveFileId?: string, id: string, name?: string, mimeType?: string } | null | undefined} doc
  */
 async function showPdfPreview(doc) {
   clearPdfViewer();
-  if (!doc || !pdfViewer || !pdfFrame || !pdfViewerStatus) return;
+  if (!doc || !pdfViewer || !pdfViewerStatus) return;
 
   pdfViewer.hidden = false;
   const token = pdfLoadToken;
+  const asImage = isImageDoc(doc.name, doc.mimeType);
+
+  const showBlob = (blob) => {
+    if (token !== pdfLoadToken) return;
+    const url = URL.createObjectURL(blob);
+    activeObjectUrl = url;
+    if (asImage && previewImage) {
+      previewImage.hidden = false;
+      previewImage.src = url;
+    } else if (pdfFrame) {
+      pdfFrame.hidden = false;
+      pdfFrame.src = url;
+    }
+    pdfViewerStatus.textContent = "";
+  };
 
   if (doc.source === "local") {
     const file = localFileBlobs.get(doc.id);
@@ -318,20 +367,12 @@ async function showPdfPreview(doc) {
         "Vorschau für lokale Dateien nur direkt nach dem Upload.";
       return;
     }
-    const url = URL.createObjectURL(file);
-    if (token !== pdfLoadToken) {
-      URL.revokeObjectURL(url);
-      return;
-    }
-    activeObjectUrl = url;
-    pdfFrame.hidden = false;
-    pdfFrame.src = url;
-    pdfViewerStatus.textContent = "";
+    showBlob(file);
     return;
   }
 
   if (doc.source === "drive" && doc.driveFileId) {
-    pdfViewerStatus.textContent = "Lade PDF…";
+    pdfViewerStatus.textContent = "Lade Datei…";
     try {
       const response = await fetch(
         `/api/pdf?id=${encodeURIComponent(doc.driveFileId)}`,
@@ -345,13 +386,7 @@ async function showPdfPreview(doc) {
       }
 
       const blob = await response.blob();
-      if (token !== pdfLoadToken) return;
-
-      const url = URL.createObjectURL(blob);
-      activeObjectUrl = url;
-      pdfFrame.hidden = false;
-      pdfFrame.src = url;
-      pdfViewerStatus.textContent = "";
+      showBlob(blob);
     } catch (error) {
       if (token !== pdfLoadToken) return;
       const message = error instanceof Error ? error.message : String(error);
@@ -368,24 +403,26 @@ async function showPdfPreview(doc) {
  */
 function handleFiles(fileList) {
   const files = Array.from(fileList);
-  const pdfs = files.filter(isPdf);
-  const rejected = files.length - pdfs.length;
+  const allowed = files.filter(isAllowedFile);
+  const rejected = files.length - allowed.length;
 
-  if (pdfs.length === 0) {
-    setStatus("Nur PDF-Dateien sind erlaubt.", true);
+  if (allowed.length === 0) {
+    setStatus("Nur PDF- und Bilddateien (JPG, PNG, WebP) sind erlaubt.", true);
     return;
   }
 
-  const added = pdfs.map((file) => {
+  const added = allowed.map((file) => {
     const id = crypto.randomUUID();
     localFileBlobs.set(id, file);
+    const type = guessType(file.name);
     return {
       id,
       name: file.name,
-      type: guessType(file.name),
+      type,
       size: file.size,
       uploadedAt: new Date().toISOString(),
       source: "local",
+      mimeType: file.type || "",
     };
   });
 
@@ -396,20 +433,30 @@ function handleFiles(fileList) {
   let message =
     added.length === 1
       ? `„${added[0].name}“ hochgeladen.`
-      : `${added.length} PDFs hochgeladen.`;
+      : `${added.length} Dateien hochgeladen.`;
 
   if (rejected > 0) {
-    message += ` ${rejected} Datei${rejected === 1 ? "" : "en"} übersprungen (kein PDF).`;
+    message += ` ${rejected} Datei${rejected === 1 ? "" : "en"} übersprungen.`;
   }
 
   setStatus(message, rejected > 0 && added.length === 0);
+
+  const plan = added.find((doc) => doc.type === "Bauplan");
+  if (plan) {
+    showView("plaene");
+    history.replaceState(null, "", "#plaene");
+  }
 }
 
 /**
  * @param {File} file
  */
-function isPdf(file) {
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+function isAllowedFile(file) {
+  const name = file.name.toLowerCase();
+  const type = String(file.type || "").toLowerCase();
+  if (type === "application/pdf" || name.endsWith(".pdf")) return true;
+  if (type.startsWith("image/")) return true;
+  return /\.(jpe?g|png|webp)$/i.test(name);
 }
 
 /**
@@ -428,6 +475,19 @@ function guessType(name) {
   ) {
     return "Offerte";
   }
+  if (
+    lower.includes("grundriss") ||
+    lower.includes("bauplan") ||
+    lower.includes("lageplan") ||
+    lower.includes("schnitt") ||
+    lower.includes("plan_") ||
+    /\bplan\b/.test(lower)
+  ) {
+    return "Bauplan";
+  }
+  if (/\.(jpe?g|png|webp)$/i.test(lower)) {
+    return "Bauplan";
+  }
   return "Sonstige";
 }
 
@@ -440,17 +500,18 @@ function renderAll() {
   renderDocumentPicker();
   renderSelectedDocument();
   renderFinanzen();
+  renderPlaene();
 }
 
 function renderKpis() {
   const documents = getAllDocuments();
   const offerten = documents.filter((doc) => doc.type === "Offerte").length;
   const rechnungen = documents.filter((doc) => doc.type === "Rechnung").length;
-  const sonstige = documents.filter((doc) => doc.type === "Sonstige").length;
+  const plaene = documents.filter((doc) => doc.type === "Bauplan").length;
 
   if (kpiOfferten) kpiOfferten.textContent = String(offerten);
   if (kpiRechnungen) kpiRechnungen.textContent = String(rechnungen);
-  if (kpiSonstige) kpiSonstige.textContent = String(sonstige);
+  if (kpiPlaene) kpiPlaene.textContent = String(plaene);
 
   docCount.textContent =
     documents.length === 1 ? "1 Dokument" : `${documents.length} Dokumente`;
@@ -461,6 +522,51 @@ function renderKpis() {
   } else {
     navBadge.hidden = true;
   }
+
+  if (navBadgePlaene) {
+    if (plaene > 0) {
+      navBadgePlaene.hidden = false;
+      navBadgePlaene.textContent = String(plaene);
+    } else {
+      navBadgePlaene.hidden = true;
+    }
+  }
+}
+
+function renderPlaene() {
+  if (!plaeneGrid) return;
+  const plans = getAllDocuments().filter((doc) => doc.type === "Bauplan");
+
+  if (plaeneCount) {
+    plaeneCount.textContent = plans.length === 1 ? "1 Plan" : `${plans.length} Pläne`;
+  }
+  if (plaeneEmpty) plaeneEmpty.hidden = plans.length > 0;
+
+  plaeneGrid.innerHTML = "";
+  plans.forEach((doc) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "plaene-card";
+    card.innerHTML = `
+      <span class="plaene-card-name"></span>
+      <span class="plaene-card-meta"></span>
+    `;
+    card.querySelector(".plaene-card-name").textContent = doc.name;
+    card.querySelector(".plaene-card-meta").textContent = [
+      doc.kurzbeschrieb || "Bauplan / Grundriss",
+      formatDate(doc.uploadedAt),
+    ].join(" · ");
+    card.addEventListener("click", () => {
+      showView("dokumente");
+      history.replaceState(null, "", "#dokumente");
+      if (docPicker) {
+        docPicker.value = doc.id;
+        renderSelectedDocument();
+        docsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    plaeneGrid.appendChild(card);
+  });
 }
 
 function renderDocumentPicker() {
@@ -498,17 +604,15 @@ function renderSelectedDocument() {
   docDetail.hidden = false;
   docDetailName.textContent = doc.name;
   docDetailMeta.textContent = `${formatSize(Number(doc.size) || 0)} · ${formatDate(doc.uploadedAt)}`;
-  docDetailType.value = ["Offerte", "Rechnung", "Sonstige"].includes(doc.type)
-    ? doc.type
-    : "Sonstige";
+  docDetailType.value = DOC_TYPES.includes(doc.type) ? doc.type : "Sonstige";
 
   const extracted = Boolean(doc.extracted);
   if (docExtract) {
     docExtract.hidden = !extracted && !doc.kurzbeschrieb;
-    const isSonstige = doc.type === "Sonstige";
+    const hideAmounts = doc.type === "Sonstige" || doc.type === "Bauplan";
     docExtract.querySelectorAll("[data-field]").forEach((row) => {
       const field = row.getAttribute("data-field");
-      if (isSonstige && field !== "kurzbeschrieb") {
+      if (hideAmounts && field !== "kurzbeschrieb") {
         row.hidden = true;
       } else {
         row.hidden = false;
@@ -560,9 +664,7 @@ async function syncDriveFiles() {
       const aiType = file.docType;
       const type =
         typeOverrides[id] ||
-        (aiType && ["Offerte", "Rechnung", "Sonstige"].includes(aiType)
-          ? aiType
-          : guessType(file.name || ""));
+        (aiType && DOC_TYPES.includes(aiType) ? aiType : guessType(file.name || ""));
 
       return {
         id,
@@ -572,6 +674,7 @@ async function syncDriveFiles() {
         size: Number(file.size) || 0,
         uploadedAt: file.modifiedTime || file.createdTime || new Date().toISOString(),
         source: "drive",
+        mimeType: file.mimeType || "",
         webViewLink: file.webViewLink || `https://drive.google.com/file/d/${file.id}/view`,
         extracted: Boolean(file.extracted),
         firma: file.firma || "",
@@ -584,8 +687,8 @@ async function syncDriveFiles() {
     renderAll();
     setDriveStatus(
       driveDocuments.length === 0
-        ? `Ordner „${folderName}“: keine PDFs gefunden.`
-        : `Ordner „${folderName}“: ${driveDocuments.length} PDF${driveDocuments.length === 1 ? "" : "s"} geladen.`
+        ? `Ordner „${folderName}“: keine Dateien gefunden.`
+        : `Ordner „${folderName}“: ${driveDocuments.length} Datei${driveDocuments.length === 1 ? "" : "en"} geladen.`
     );
   } catch (error) {
     console.error(error);
