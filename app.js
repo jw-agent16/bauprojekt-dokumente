@@ -15,12 +15,13 @@ const docDetailOpen = document.getElementById("doc-detail-open");
 const docDetailDelete = document.getElementById("doc-detail-delete");
 const docDetailStatus = document.getElementById("doc-detail-status");
 const navBadge = document.getElementById("nav-badge");
-const kpiTotal = document.getElementById("kpi-total");
-const kpiOfferten = document.getElementById("kpi-offerten");
-const kpiRechnungen = document.getElementById("kpi-rechnungen");
-const kpiSonstige = document.getElementById("kpi-sonstige");
+const kpiUpload = document.getElementById("kpi-upload");
+const kpiOfferten = document.getElementById("kpi-offerten-count");
+const kpiRechnungen = document.getElementById("kpi-rechnungen-count");
+const kpiSonstige = document.getElementById("kpi-sonstige-count");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const sidebarBackdrop = document.getElementById("sidebar-backdrop");
+const topbarTitle = document.getElementById("topbar-title");
 const driveStatus = document.getElementById("drive-status");
 const driveSyncBtn = document.getElementById("drive-sync-btn");
 const docExtract = document.getElementById("doc-extract");
@@ -31,6 +32,8 @@ const docExtractKurz = document.getElementById("doc-extract-kurzbeschrieb");
 const pdfViewer = document.getElementById("pdf-viewer");
 const pdfViewerStatus = document.getElementById("pdf-viewer-status");
 const pdfFrame = document.getElementById("pdf-frame");
+const uploadPanel = document.getElementById("upload-panel");
+const docsPanel = document.getElementById("docs-panel");
 
 /** @type {Array<{id: string, name: string, type: string, size: number, uploadedAt: string, source?: string, webViewLink?: string}>} */
 let localDocuments = loadLocalDocuments();
@@ -45,49 +48,45 @@ let activeObjectUrl = null;
 /** @type {number} */
 let pdfLoadToken = 0;
 
-renderAll();
-syncDriveFiles();
-initNavigation();
-
-const VIEW_META = {
-  cockpit: { title: "Cockpit", crumb: "Übersicht" },
-  projekt: { title: "Projekt", crumb: "Details" },
-  finanzen: { title: "Finanzen", crumb: "Übersicht" },
-  dokumente: { title: "Dokumente", crumb: "Offerten & Rechnungen" },
-  account: { title: "Account", crumb: "Profil" },
-  support: { title: "Support", crumb: "Hilfe" },
-  einstellungen: { title: "Einstellungen", crumb: "Allgemein" },
+const VIEW_TITLES = {
+  cockpit: "Cockpit",
+  projekt: "Projekt",
+  finanzen: "Finanzen",
+  dokumente: "Dokumente",
+  account: "Account",
+  support: "Support",
+  einstellungen: "Einstellungen",
 };
 
-function initNavigation() {
-  const links = document.querySelectorAll(".nav-link[data-view]");
-  links.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      const view = link.dataset.view;
-      if (!view) return;
-      showView(view);
-      history.replaceState(null, "", `#${view}`);
-      document.body.classList.remove("sidebar-open");
-      if (sidebarBackdrop) sidebarBackdrop.hidden = true;
-    });
-  });
+function closeSidebar() {
+  document.body.classList.remove("sidebar-open");
+  if (sidebarBackdrop) sidebarBackdrop.hidden = true;
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute("aria-expanded", "false");
+    sidebarToggle.setAttribute("aria-label", "Menü öffnen");
+  }
+}
 
-  const brand = document.querySelector(".brand");
-  brand?.addEventListener("click", (event) => {
-    event.preventDefault();
-    showView("dokumente");
-    history.replaceState(null, "", "#dokumente");
-  });
+function openSidebar() {
+  document.body.classList.add("sidebar-open");
+  if (sidebarBackdrop) sidebarBackdrop.hidden = false;
+  if (sidebarToggle) {
+    sidebarToggle.setAttribute("aria-expanded", "true");
+    sidebarToggle.setAttribute("aria-label", "Menü schliessen");
+  }
+}
 
-  const initial = (location.hash || "#dokumente").replace("#", "");
-  showView(VIEW_META[initial] ? initial : "dokumente");
+function toggleSidebar() {
+  if (document.body.classList.contains("sidebar-open")) closeSidebar();
+  else openSidebar();
 }
 
 /**
  * @param {string} viewId
  */
 function showView(viewId) {
+  if (!VIEW_TITLES[viewId]) viewId = "dokumente";
+
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     const active = panel.getAttribute("data-view-panel") === viewId;
     panel.hidden = !active;
@@ -101,23 +100,84 @@ function showView(viewId) {
     else link.removeAttribute("aria-current");
   });
 
-  const meta = VIEW_META[viewId] || VIEW_META.dokumente;
-  const crumbSection = document.getElementById("crumb-section");
-  const crumbPage = document.getElementById("crumb-page");
-  if (crumbSection) crumbSection.textContent = meta.title;
-  if (crumbPage) crumbPage.textContent = meta.crumb;
-  document.title = `Bauprojekt S9 — ${meta.title}`;
+  const title = VIEW_TITLES[viewId];
+  if (topbarTitle) topbarTitle.textContent = title;
+  document.title = `Bauprojekt S9 — ${title}`;
 }
 
-sidebarToggle?.addEventListener("click", () => {
-  document.body.classList.toggle("sidebar-open");
-  sidebarBackdrop.hidden = !document.body.classList.contains("sidebar-open");
+function initNavigation() {
+  document.querySelectorAll(".nav-link[data-view]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      const view = link.dataset.view;
+      if (!view) return;
+      showView(view);
+      history.replaceState(null, "", `#${view}`);
+      closeSidebar();
+    });
+  });
+
+  const brand = document.querySelector(".brand");
+  brand?.addEventListener("click", (event) => {
+    event.preventDefault();
+    showView("dokumente");
+    history.replaceState(null, "", "#dokumente");
+    closeSidebar();
+  });
+
+  sidebarToggle?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleSidebar();
+  });
+
+  sidebarBackdrop?.addEventListener("click", () => closeSidebar());
+
+  window.addEventListener("hashchange", () => {
+    const view = (location.hash || "#dokumente").replace("#", "");
+    showView(VIEW_TITLES[view] ? view : "dokumente");
+  });
+
+  const initial = (location.hash || "#dokumente").replace("#", "");
+  showView(VIEW_TITLES[initial] ? initial : "dokumente");
+}
+
+function scrollToUpload() {
+  showView("dokumente");
+  history.replaceState(null, "", "#dokumente");
+  uploadPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.setTimeout(() => fileInput?.click(), 280);
+}
+
+/**
+ * @param {string} type
+ */
+function scrollToDocPicker(type) {
+  showView("dokumente");
+  history.replaceState(null, "", "#dokumente");
+  docsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const match = getAllDocuments().find((doc) => doc.type === type);
+  if (match && docPicker) {
+    docPicker.value = match.id;
+    renderSelectedDocument();
+  }
+
+  window.setTimeout(() => docPicker?.focus(), 320);
+}
+
+kpiUpload?.addEventListener("click", () => scrollToUpload());
+
+document.querySelectorAll("[data-scroll-type]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const type = btn.getAttribute("data-scroll-type");
+    if (type) scrollToDocPicker(type);
+  });
 });
 
-sidebarBackdrop?.addEventListener("click", () => {
-  document.body.classList.remove("sidebar-open");
-  sidebarBackdrop.hidden = true;
-});
+renderAll();
+syncDriveFiles();
+initNavigation();
 
 dropzone.addEventListener("click", () => fileInput.click());
 dropzone.addEventListener("keydown", (event) => {
@@ -357,10 +417,9 @@ function renderKpis() {
   const rechnungen = documents.filter((doc) => doc.type === "Rechnung").length;
   const sonstige = documents.filter((doc) => doc.type === "Sonstige").length;
 
-  kpiTotal.textContent = String(documents.length);
-  kpiOfferten.textContent = String(offerten);
-  kpiRechnungen.textContent = String(rechnungen);
-  kpiSonstige.textContent = String(sonstige);
+  if (kpiOfferten) kpiOfferten.textContent = String(offerten);
+  if (kpiRechnungen) kpiRechnungen.textContent = String(rechnungen);
+  if (kpiSonstige) kpiSonstige.textContent = String(sonstige);
 
   docCount.textContent =
     documents.length === 1 ? "1 Dokument" : `${documents.length} Dokumente`;
