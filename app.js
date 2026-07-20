@@ -74,7 +74,7 @@ let activeObjectUrl = null;
 let pdfLoadToken = 0;
 
 const VIEW_TITLES = {
-  cockpit: "Cockpit",
+  home: "Bauprojekt S9",
   projekt: "Projekt",
   finanzen: "Finanzen",
   dokumente: "Dokumente",
@@ -111,7 +111,7 @@ function toggleSidebar() {
  * @param {string} viewId
  */
 function showView(viewId) {
-  if (!VIEW_TITLES[viewId]) viewId = "dokumente";
+  if (!VIEW_TITLES[viewId]) viewId = "home";
 
   document.querySelectorAll("[data-view-panel]").forEach((panel) => {
     const active = panel.getAttribute("data-view-panel") === viewId;
@@ -148,8 +148,8 @@ function initNavigation() {
   const brand = document.querySelector(".brand");
   brand?.addEventListener("click", (event) => {
     event.preventDefault();
-    showView("dokumente");
-    history.replaceState(null, "", "#dokumente");
+    showView("home");
+    history.replaceState(null, "", "#home");
     closeSidebar();
   });
 
@@ -162,12 +162,12 @@ function initNavigation() {
   sidebarBackdrop?.addEventListener("click", () => closeSidebar());
 
   window.addEventListener("hashchange", () => {
-    const view = (location.hash || "#dokumente").replace("#", "");
-    showView(VIEW_TITLES[view] ? view : "dokumente");
+    const view = (location.hash || "#home").replace("#", "");
+    showView(VIEW_TITLES[view] ? view : "home");
   });
 
-  const initial = (location.hash || "#dokumente").replace("#", "");
-  showView(VIEW_TITLES[initial] ? initial : "dokumente");
+  const initial = (location.hash || "#home").replace("#", "");
+  showView(VIEW_TITLES[initial] ? initial : "home");
 }
 
 function openFilePicker() {

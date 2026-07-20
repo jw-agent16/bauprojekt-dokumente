@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bauprojekt S9 — Dokumente</title>
+    <title>Bauprojekt S9</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,7 +16,7 @@
     <div class="app">
       <aside class="sidebar" id="sidebar">
         <div class="sidebar-top">
-          <a class="brand" href="#">
+          <a class="brand" href="#home" data-view="home">
             <span class="brand-mark" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
                 <path
@@ -46,19 +46,17 @@
           </label>
 
           <nav class="sidebar-nav" aria-label="Hauptnavigation">
-            <a class="nav-link" href="#cockpit" data-view="cockpit">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="3.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-                <rect x="13.5" y="3.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-                <rect x="3.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-                <rect x="13.5" y="13.5" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" />
-              </svg>
-              Cockpit
-            </a>
-            <a class="nav-link" href="#projekt" data-view="projekt">
+            <a class="nav-link is-active" href="#home" data-view="home" aria-current="page">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M4 18V8l8-4 8 4v10" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
                 <path d="M9 18v-5h6v5" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+              Start
+            </a>
+            <a class="nav-link" href="#projekt" data-view="projekt">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="4" y="5" width="16" height="14" rx="1.5" stroke="currentColor" stroke-width="1.5" />
+                <path d="M8 9h3M8 12h8M8 15h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
               </svg>
               Projekt
             </a>
@@ -73,7 +71,7 @@
               </svg>
               Finanzen
             </a>
-            <a class="nav-link is-active" href="#dokumente" data-view="dokumente" aria-current="page">
+            <a class="nav-link" href="#dokumente" data-view="dokumente">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M7 3.5h7l4 4V20a1.5 1.5 0 01-1.5 1.5H7A1.5 1.5 0 015.5 20V5A1.5 1.5 0 017 3.5z"
@@ -173,18 +171,49 @@
               <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
             </svg>
           </button>
-          <p class="topbar-title" id="topbar-title">Dokumente</p>
+          <p class="topbar-title" id="topbar-title">Bauprojekt S9</p>
         </header>
 
         <main class="content">
-          <section class="view" id="view-cockpit" data-view-panel="cockpit" hidden>
-            <div class="page-title-row">
-              <h1>Cockpit</h1>
-              <p class="page-subtitle">Übersicht über das Bauprojekt — Inhalt folgt.</p>
-            </div>
-            <div class="panel empty-panel">
-              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
-            </div>
+          <section class="view is-active" id="view-home" data-view-panel="home">
+            <section class="home-hero" aria-label="Bauprojekt S9">
+              <p class="home-brand">Bauprojekt <em>S9</em></p>
+              <h1 class="home-headline">Silbergasse 9</h1>
+              <p class="home-lead">Lage, Bestand und Vision — als goldene Projektskizzen.</p>
+            </section>
+
+            <section class="home-gallery" aria-label="Projektskizzen">
+              <figure class="home-sketch home-sketch-featured">
+                <img
+                  src="assets/home-skizze-lageplan.jpg"
+                  alt="Goldskizze Lageplan Silbergasse 9"
+                  width="1600"
+                  height="900"
+                  loading="eager"
+                />
+                <figcaption>Lageplan</figcaption>
+              </figure>
+              <figure class="home-sketch">
+                <img
+                  src="assets/home-skizze-bestand.jpg"
+                  alt="Goldskizze Bestand Gebäude"
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+                <figcaption>Bestand</figcaption>
+              </figure>
+              <figure class="home-sketch">
+                <img
+                  src="assets/home-skizze-vision.jpg"
+                  alt="Goldskizze Vision Neubau"
+                  width="1600"
+                  height="900"
+                  loading="lazy"
+                />
+                <figcaption>Vision</figcaption>
+              </figure>
+            </section>
           </section>
 
           <section class="view" id="view-projekt" data-view-panel="projekt" hidden>
@@ -273,7 +302,7 @@
             </section>
           </section>
 
-          <section class="view is-active" id="view-dokumente" data-view-panel="dokumente">
+          <section class="view" id="view-dokumente" data-view-panel="dokumente" hidden>
           <div class="page-title-row">
             <h1>Dokumente</h1>
             <p class="page-subtitle">
