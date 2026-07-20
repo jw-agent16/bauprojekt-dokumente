@@ -1,19 +1,15 @@
 /**
- * Bauprojekt — Gmail PDF-Anhänge automatisch nach Google Drive speichern
+ * Bauprojekt — Gmail-Anhänge (PDF + Bilder) nach Google Drive
  *
  * Einrichtung (einmalig):
- * 1. https://script.google.com → Neues Projekt
- * 2. Standardcode löschen, diesen gesamten Code einfügen
- * 3. CONFIG unten anpassen (optional)
- * 4. Funktion "einmaligEinrichten" auswählen → Ausführen
- * 5. Google-Konto wählen und Berechtigungen erlauben
- * 6. Danach Funktion "pdfsNachDriveSpeichern" einmal manuell testen
- * 7. Trigger: Trigger (Uhr-Symbol) → Trigger hinzufügen
- *    - Funktion: pdfsNachDriveSpeichern
- *    - Ereignisquelle: Zeitgesteuert
- *    - Minuten-Timer: alle 5 Minuten (oder 10/15)
+ * 1. https://script.google.com → Projekt öffnen / Code ersetzen
+ * 2. einmaligEinrichten ausführen (Berechtigungen erlauben)
+ * 3. geminiApiKey setzen (für KI-Auslese)
+ * 4. inboxImportJetzt ausführen — holt bestehende Inbox-Mails mit Anhängen
+ *    (bei vielen Mails mehrmals ausführen, bis „0 Threads“ im Log)
+ * 5. stundentriggerEinrichten ausführen — prüft die Inbox jede Stunde neu
  *
- * Fertig: Neue Mails mit PDF landen im Drive-Ordner.
+ * Fertig: Anhänge landen in Bauprojekt/Eingang; neue Mails stündlich.
  */
 
 var CONFIG = {
@@ -21,22 +17,19 @@ var CONFIG = {
   driveFolderPath: ["Bauprojekt", "Eingang"],
 
   /**
-   * Gmail-Suche — passt du bei Bedarf an.
-   * Beispiele:
-   *   "has:attachment filename:pdf newer_than:30d -label:Bauprojekt-Drive"
-   *   "from:rechnung@beispiel.ch has:attachment filename:pdf -label:Bauprojekt-Drive"
+   * Gmail-Suche: gesamte Inbox mit Anhängen, noch nicht importiert.
+   * Ohne newer_than — auch ältere Mails.
    */
-  gmailQuery:
-    "has:attachment filename:pdf newer_than:30d -label:Bauprojekt-Drive",
+  gmailQuery: "in:inbox has:attachment -label:Bauprojekt-Drive",
 
-  /** Label, das nach erfolgreichem Speichern gesetzt wird (verhindert Doppel-Import) */
+  /** Label nach Import (verhindert Doppel-Import) */
   processedLabel: "Bauprojekt-Drive",
 
-  /** Max. Threads pro Lauf (Apps Script Zeitlimit) */
-  maxThreadsPerRun: 40,
+  /** Max. Threads pro Lauf (Apps Script Zeitlimit; bei Bedarf mehrfach ausführen) */
+  maxThreadsPerRun: 50,
 
   /**
-   * true = Dateiname bekommt Präfix mit Datum der Mail (weniger Namenskollisionen)
+   * true = Dateiname bekommt Präfix mit Datum der Mail
    * false = Original-Dateiname behalten
    */
   prefixWithMailDate: true,
@@ -49,11 +42,10 @@ var CONFIG = {
 
   /**
    * Gemini API Key von https://aistudio.google.com/apikey
-   * (kostenloses Kontingent reicht für den Start)
    */
   geminiApiKey: "",
 
-  /** Max. PDFs pro Auslese-Lauf (Apps Script Zeitlimit) */
+  /** Max. Dateien pro Auslese-Lauf */
   maxExtractionsPerRun: 5,
 };
 
@@ -67,7 +59,35 @@ function einmaligEinrichten() {
   Logger.log("Drive-Ordner bereit: %s", folder.getUrl());
   Logger.log("Ordner-ID (für die Bauprojekt-App): %s", folder.getId());
   Logger.log('Gmail-Label bereit: "%s"', CONFIG.processedLabel);
-  Logger.log("Als Nächstes: pdfsNachDriveSpeichern einmal ausführen, dann Trigger setzen.");
+  Logger.log("Als Nächstes: inboxImportJetzt, dann stundentriggerEinrichten.");
+}
+
+/**
+ * Bestehende Inbox-Mails mit Anhängen jetzt importieren.
+ * Bei vielen Mails mehrmals ausführen, bis das Log „0 Threads“ zeigt.
+ */
+function inboxImportJetzt() {
+  pdfsNachDriveSpeichern();
+}
+
+/**
+ * Stündlichen Trigger setzen (neue Inbox-Mails automatisch).
+ * Einmal ausführen — ersetzt bestehende Trigger für dieselbe Funktion.
+ */
+function stundentriggerEinrichten() {
+  var handlers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < handlers.length; i++) {
+    if (handlers[i].getHandlerFunction() === "pdfsNachDriveSpeichern") {
+      ScriptApp.deleteTrigger(handlers[i]);
+    }
+  }
+
+  ScriptApp.newTrigger("pdfsNachDriveSpeichern")
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  Logger.log("Stündlicher Trigger aktiv: pdfsNachDriveSpeichern");
 }
 
 /**
@@ -494,7 +514,8 @@ function extractPdfWithGemini_(file, apiKey) {
 }
 
 /**
- * Hauptfunktion — für manuellen Test und für den zeitgesteuerten Trigger.
+ * Hauptfunktion — manuell, inboxImportJetzt, und stündlicher Trigger.
+ * Durchsucht die Inbox nach Anhängen (PDF + Bilder) und speichert sie in Drive.
  */
 function pdfsNachDriveSpeichern() {
   var folder = getOrCreateFolderPath_(CONFIG.driveFolderPath);
@@ -509,27 +530,25 @@ function pdfsNachDriveSpeichern() {
     var threadSavedSomething = false;
 
     messages.forEach(function (message) {
-      var result = savePdfAttachmentsFromMessage_(message, folder);
+      var result = saveAttachmentsFromMessage_(message, folder);
       saved += result.saved;
       skipped += result.skipped;
       if (result.saved > 0) threadSavedSomething = true;
     });
 
-    // Auch Threads ohne neues PDF labeln, wenn sie schon im Suchergebnis sind
-    // und nur PDFs hatten die wir übersprungen haben — verhindert Endlosschleife.
-    if (threadSavedSomething || threadHasOnlyHandledPdfs_(thread, folder)) {
+    if (threadSavedSomething || threadHasOnlyHandledAttachments_(thread)) {
       thread.addLabel(label);
     }
   });
 
   Logger.log(
-    "Fertig. Neu gespeichert: %s | Übersprungen: %s | Threads geprüft: %s",
+    "Fertig. Neu gespeichert: %s | Übersprungen: %s | Threads geprüft: %s | Query: %s",
     saved,
     skipped,
-    threads.length
+    threads.length,
+    CONFIG.gmailQuery
   );
 
-  // Neue PDFs direkt auslesen (wenn Gemini-Key gesetzt)
   try {
     if (getGeminiApiKey_()) {
       dokumenteAuslesen();
@@ -540,9 +559,9 @@ function pdfsNachDriveSpeichern() {
 }
 
 /**
- * Speichert alle PDF-Anhänge einer Mail in den Drive-Ordner.
+ * Speichert PDF- und Bild-Anhänge einer Mail in den Drive-Ordner.
  */
-function savePdfAttachmentsFromMessage_(message, folder) {
+function saveAttachmentsFromMessage_(message, folder) {
   var saved = 0;
   var skipped = 0;
   var attachments = message.getAttachments({
@@ -554,29 +573,24 @@ function savePdfAttachmentsFromMessage_(message, folder) {
   var mailDate = message.getDate();
 
   attachments.forEach(function (attachment) {
-    if (!isPdfAttachment_(attachment)) {
+    if (!isImportableAttachment_(attachment)) {
       return;
     }
 
-    var baseName = sanitizeFileName_(attachment.getName() || "dokument.pdf");
-    if (!/\.pdf$/i.test(baseName)) {
-      baseName += ".pdf";
-    }
+    var baseName = sanitizeFileName_(attachment.getName() || "dokument");
+    baseName = ensureAttachmentExtension_(baseName, attachment);
 
     var fileName = CONFIG.prefixWithMailDate
       ? formatDatePrefix_(mailDate) + "_" + baseName
       : baseName;
 
-    // Doppelte Imports derselben Mail+Datei vermeiden
-    var dedupeKey = "pdf:" + messageId + ":" + baseName.toLowerCase();
+    var dedupeKey = "att:" + messageId + ":" + baseName.toLowerCase();
     if (PropertiesService.getScriptProperties().getProperty(dedupeKey)) {
       skipped++;
       return;
     }
 
-    // Falls Dateiname schon existiert: Zähler anhängen
     fileName = uniqueFileName_(folder, fileName);
-
     folder.createFile(attachment.copyBlob().setName(fileName));
     PropertiesService.getScriptProperties().setProperty(dedupeKey, "1");
     saved++;
@@ -587,11 +601,14 @@ function savePdfAttachmentsFromMessage_(message, folder) {
   return { saved: saved, skipped: skipped };
 }
 
-function threadHasOnlyHandledPdfs_(thread, folder) {
-  // Wenn der Thread PDFs hat, aber nichts Neues zu speichern war,
-  // trotzdem als erledigt markieren, sobald alle PDF-Keys gesetzt sind.
+/** @deprecated Alias — nutzt saveAttachmentsFromMessage_ */
+function savePdfAttachmentsFromMessage_(message, folder) {
+  return saveAttachmentsFromMessage_(message, folder);
+}
+
+function threadHasOnlyHandledAttachments_(thread) {
   var messages = thread.getMessages();
-  var pdfCount = 0;
+  var count = 0;
   var handled = 0;
 
   messages.forEach(function (message) {
@@ -600,28 +617,53 @@ function threadHasOnlyHandledPdfs_(thread, folder) {
       includeAttachments: true,
     });
     attachments.forEach(function (attachment) {
-      if (!isPdfAttachment_(attachment)) return;
-      pdfCount++;
-      var baseName = sanitizeFileName_(attachment.getName() || "dokument.pdf");
-      if (!/\.pdf$/i.test(baseName)) baseName += ".pdf";
-      var dedupeKey = "pdf:" + message.getId() + ":" + baseName.toLowerCase();
+      if (!isImportableAttachment_(attachment)) return;
+      count++;
+      var baseName = sanitizeFileName_(attachment.getName() || "dokument");
+      baseName = ensureAttachmentExtension_(baseName, attachment);
+      var dedupeKey = "att:" + message.getId() + ":" + baseName.toLowerCase();
       if (PropertiesService.getScriptProperties().getProperty(dedupeKey)) {
         handled++;
       }
     });
   });
 
-  return pdfCount > 0 && pdfCount === handled;
+  return count > 0 && count === handled;
 }
 
-function isPdfAttachment_(attachment) {
+function threadHasOnlyHandledPdfs_(thread, folder) {
+  return threadHasOnlyHandledAttachments_(thread);
+}
+
+function isImportableAttachment_(attachment) {
   var name = (attachment.getName() || "").toLowerCase();
   var contentType = (attachment.getContentType() || "").toLowerCase();
-  return (
+  if (
     contentType === "application/pdf" ||
     contentType.indexOf("application/pdf") === 0 ||
     name.endsWith(".pdf")
-  );
+  ) {
+    return true;
+  }
+  if (contentType.indexOf("image/") === 0) return true;
+  return /\.(jpe?g|png|webp|gif)$/i.test(name);
+}
+
+function isPdfAttachment_(attachment) {
+  return isImportableAttachment_(attachment);
+}
+
+function ensureAttachmentExtension_(baseName, attachment) {
+  if (/\.(pdf|jpe?g|png|webp|gif)$/i.test(baseName)) return baseName;
+  var contentType = (attachment.getContentType() || "").toLowerCase();
+  if (contentType.indexOf("pdf") !== -1) return baseName + ".pdf";
+  if (contentType.indexOf("png") !== -1) return baseName + ".png";
+  if (contentType.indexOf("webp") !== -1) return baseName + ".webp";
+  if (contentType.indexOf("gif") !== -1) return baseName + ".gif";
+  if (contentType.indexOf("jpeg") !== -1 || contentType.indexOf("jpg") !== -1) {
+    return baseName + ".jpg";
+  }
+  return baseName + ".pdf";
 }
 
 function getOrCreateFolderPath_(pathParts) {
