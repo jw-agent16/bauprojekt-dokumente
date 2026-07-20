@@ -188,11 +188,77 @@
           <section class="view" id="view-finanzen" data-view-panel="finanzen" hidden>
             <div class="page-title-row">
               <h1>Finanzen</h1>
-              <p class="page-subtitle">Kosten, Offerten und Rechnungen im Überblick — Inhalt folgt.</p>
+              <p class="page-subtitle">
+                KV-Budget, Offerten-Fortschritt und Cash-Outflow aus Rechnungen.
+              </p>
             </div>
-            <div class="panel empty-panel">
-              <p>Diese Seite ist noch leer und wird später ausgebaut.</p>
-            </div>
+
+            <section class="panel finance-kv-panel" aria-labelledby="kv-heading">
+              <div class="panel-head">
+                <h2 id="kv-heading">Kostenvoranschlag (KV)</h2>
+                <p class="panel-hint">Basisbetrag · Balken zeigen ±10&nbsp;% Bandbreite</p>
+              </div>
+              <div class="finance-kv-form">
+                <label class="field">
+                  <span>KV-Betrag inkl. MwSt (CHF)</span>
+                  <input
+                    id="kv-amount-input"
+                    type="text"
+                    inputmode="decimal"
+                    placeholder="z. B. 850000"
+                    autocomplete="off"
+                  />
+                </label>
+                <label class="field">
+                  <span>KV-Dokument (optional)</span>
+                  <input id="kv-file-input" type="file" accept="application/pdf,.pdf" />
+                </label>
+              </div>
+              <p id="kv-file-name" class="panel-hint" hidden></p>
+              <p id="kv-range-hint" class="panel-hint">Noch kein KV hinterlegt.</p>
+            </section>
+
+            <section class="panel finance-bars-panel" aria-label="Fortschritt">
+              <article class="finance-bar-block">
+                <div class="finance-bar-head">
+                  <h3>Kostenvoranschlag ±10&nbsp;%</h3>
+                  <p id="finance-kv-meta" class="finance-bar-meta">—</p>
+                </div>
+                <div class="finance-range" aria-hidden="true">
+                  <div class="finance-range-track">
+                    <div class="finance-range-band" id="finance-kv-band"></div>
+                    <div class="finance-range-mid" id="finance-kv-mid"></div>
+                  </div>
+                  <div class="finance-range-labels">
+                    <span id="finance-kv-low">−10&nbsp;%</span>
+                    <span id="finance-kv-mid-label">KV</span>
+                    <span id="finance-kv-high">+10&nbsp;%</span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="finance-bar-block">
+                <div class="finance-bar-head">
+                  <h3>Offerten · Fortschritt</h3>
+                  <p id="finance-offerten-meta" class="finance-bar-meta">—</p>
+                </div>
+                <div class="finance-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="finance-offerten-bar" aria-valuenow="0">
+                  <div class="finance-progress-fill is-offers" id="finance-offerten-fill"></div>
+                </div>
+                <p id="finance-offerten-detail" class="finance-bar-detail"></p>
+              </article>
+
+              <article class="finance-bar-block">
+                <div class="finance-bar-head">
+                  <h3>Bezahlte Rechnungen · Cash Outflow</h3>
+                  <p id="finance-rechnungen-meta" class="finance-bar-meta">—</p>
+                </div>
+                <div class="finance-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="finance-rechnungen-bar" aria-valuenow="0">
+                  <div class="finance-progress-fill is-cash" id="finance-rechnungen-fill"></div>
+                </div>
+                <p id="finance-rechnungen-detail" class="finance-bar-detail"></p>
+              </article>
+            </section>
           </section>
 
           <section class="view is-active" id="view-dokumente" data-view-panel="dokumente">

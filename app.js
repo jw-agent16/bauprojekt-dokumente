@@ -1,5 +1,6 @@
 const STORAGE_KEY = "bauprojekt-documents";
 const TYPE_OVERRIDES_KEY = "bauprojekt-type-overrides";
+const KV_STORAGE_KEY = "bauprojekt-kv";
 
 const fileInput = document.getElementById("file-input");
 const uploadStatus = document.getElementById("upload-status");
@@ -32,6 +33,25 @@ const pdfViewer = document.getElementById("pdf-viewer");
 const pdfViewerStatus = document.getElementById("pdf-viewer-status");
 const pdfFrame = document.getElementById("pdf-frame");
 const docsPanel = document.getElementById("docs-panel");
+const kvAmountInput = document.getElementById("kv-amount-input");
+const kvFileInput = document.getElementById("kv-file-input");
+const kvFileName = document.getElementById("kv-file-name");
+const kvRangeHint = document.getElementById("kv-range-hint");
+const financeKvMeta = document.getElementById("finance-kv-meta");
+const financeKvLow = document.getElementById("finance-kv-low");
+const financeKvHigh = document.getElementById("finance-kv-high");
+const financeKvMidLabel = document.getElementById("finance-kv-mid-label");
+const financeOffertenMeta = document.getElementById("finance-offerten-meta");
+const financeOffertenFill = document.getElementById("finance-offerten-fill");
+const financeOffertenBar = document.getElementById("finance-offerten-bar");
+const financeOffertenDetail = document.getElementById("finance-offerten-detail");
+const financeRechnungenMeta = document.getElementById("finance-rechnungen-meta");
+const financeRechnungenFill = document.getElementById("finance-rechnungen-fill");
+const financeRechnungenBar = document.getElementById("finance-rechnungen-bar");
+const financeRechnungenDetail = document.getElementById("finance-rechnungen-detail");
+
+/** @type {{ amount: number | null, fileName: string }} */
+let kvState = loadKvState();
 
 /** @type {Array<{id: string, name: string, type: string, size: number, uploadedAt: string, source?: string, webViewLink?: string}>} */
 let localDocuments = loadLocalDocuments();
@@ -101,6 +121,7 @@ function showView(viewId) {
   const title = VIEW_TITLES[viewId];
   if (topbarTitle) topbarTitle.textContent = title;
   document.title = `Bauprojekt S9 — ${title}`;
+  if (viewId === "finanzen") renderFinanzen();
 }
 
 function initNavigation() {
@@ -170,6 +191,45 @@ document.querySelectorAll("[data-scroll-type]").forEach((btn) => {
     const type = btn.getAttribute("data-scroll-type");
     if (type) scrollToDocPicker(type);
   });
+});
+
+if (kvAmountInput) {
+  kvAmountInput.value = kvState.amount != null ? formatInputAmount(kvState.amount) : "";
+  kvAmountInput.addEventListener("change", () => {
+    const parsed = parseAmount(kvAmountInput.value);
+    kvState.amount = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    persistKvState();
+    renderFinanzen();
+  });
+  kvAmountInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      kvAmountInput.blur();
+    }
+  });
+}
+
+if (kvFileName && kvState.fileName) {
+  kvFileName.hidden = false;
+  kvFileName.textContent = `KV-Datei: ${kvState.fileName}`;
+}
+
+kvFileInput?.addEventListener("change", () => {
+  const file = kvFileInput.files?.[0];
+  if (!file) return;
+  if (!isPdf(file)) {
+    setStatus("Nur PDF-Dateien sind als KV erlaubt.", true);
+    kvFileInput.value = "";
+    return;
+  }
+  kvState.fileName = file.name;
+  persistKvState();
+  if (kvFileName) {
+    kvFileName.hidden = false;
+    kvFileName.textContent = `KV-Datei: ${file.name}`;
+  }
+  kvFileInput.value = "";
+  renderFinanzen();
 });
 
 renderAll();
@@ -379,6 +439,7 @@ function renderAll() {
   renderKpis();
   renderDocumentPicker();
   renderSelectedDocument();
+  renderFinanzen();
 }
 
 function renderKpis() {
@@ -602,4 +663,179 @@ function formatDate(iso) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso));
+}
+
+function loadKvState() {
+  try {
+    const raw = localStorage.getItem(KV_STORAGE_KEY);
+    if (!raw) return { amount: null, fileName: "" };
+    const data = JSON.parse(raw);
+    const amount = Number(data?.amount);
+    return {
+      amount: Number.isFinite(amount) && amount > 0 ? amount : null,
+      fileName: typeof data?.fileName === "string" ? data.fileName : "",
+    };
+  } catch {
+    return { amount: null, fileName: "" };
+  }
+}
+
+function persistKvState() {
+  localStorage.setItem(
+    KV_STORAGE_KEY,
+    JSON.stringify({
+      amount: kvState.amount,
+      fileName: kvState.fileName || "",
+    })
+  );
+}
+
+/**
+ * Parse Swiss/EU currency strings to a number.
+ * @param {unknown} value
+ * @returns {number}
+ */
+function parseAmount(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  let text = String(value || "")
+    .replace(/\s/g, "")
+    .replace(/CHF|Fr\.?|SFr\.?/gi, "")
+    .replace(/[^\d.,'-]/g, "");
+
+  if (!text) return NaN;
+
+  // 1'234.50 or 1'234,50
+  if (text.includes("'")) {
+    text = text.replace(/'/g, "");
+  }
+
+  const hasComma = text.includes(",");
+  const hasDot = text.includes(".");
+
+  if (hasComma && hasDot) {
+    // 1.234,50 → EU ; 1,234.50 → US
+    if (text.lastIndexOf(",") > text.lastIndexOf(".")) {
+      text = text.replace(/\./g, "").replace(",", ".");
+    } else {
+      text = text.replace(/,/g, "");
+    }
+  } else if (hasComma) {
+    const parts = text.split(",");
+    text =
+      parts.length === 2 && parts[1].length <= 2
+        ? `${parts[0].replace(/\./g, "")}.${parts[1]}`
+        : text.replace(/,/g, "");
+  } else if (hasDot) {
+    const parts = text.split(".");
+    if (parts.length > 2) {
+      const dec = parts.pop();
+      text = `${parts.join("")}.${dec}`;
+    }
+  }
+
+  const num = Number(text);
+  return Number.isFinite(num) ? num : NaN;
+}
+
+/**
+ * @param {number} amount
+ */
+function formatCHF(amount) {
+  return new Intl.NumberFormat("de-CH", {
+    style: "currency",
+    currency: "CHF",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * @param {number} amount
+ */
+function formatInputAmount(amount) {
+  return new Intl.NumberFormat("de-CH", {
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+/**
+ * @param {string} type
+ */
+function sumAmountsByType(type) {
+  return getAllDocuments()
+    .filter((doc) => doc.type === type)
+    .reduce((sum, doc) => {
+      const amount = parseAmount(doc.betrag);
+      return Number.isFinite(amount) ? sum + amount : sum;
+    }, 0);
+}
+
+/**
+ * @param {string} type
+ */
+function countAmountsByType(type) {
+  return getAllDocuments().filter((doc) => {
+    if (doc.type !== type) return false;
+    return Number.isFinite(parseAmount(doc.betrag));
+  }).length;
+}
+
+function renderFinanzen() {
+  if (!financeKvMeta) return;
+
+  const kv = kvState.amount;
+  const offertenSum = sumAmountsByType("Offerte");
+  const rechnungenSum = sumAmountsByType("Rechnung");
+  const offertenCount = countAmountsByType("Offerte");
+  const rechnungenCount = countAmountsByType("Rechnung");
+
+  if (kv != null && kv > 0) {
+    const low = kv * 0.9;
+    const high = kv * 1.1;
+    if (kvRangeHint) {
+      kvRangeHint.textContent = `Bandbreite ±10 %: ${formatCHF(low)} – ${formatCHF(high)}`;
+    }
+    financeKvMeta.textContent = formatCHF(kv);
+    if (financeKvLow) financeKvLow.textContent = formatCHF(low);
+    if (financeKvHigh) financeKvHigh.textContent = formatCHF(high);
+    if (financeKvMidLabel) financeKvMidLabel.textContent = formatCHF(kv);
+  } else {
+    if (kvRangeHint) kvRangeHint.textContent = "Noch kein KV hinterlegt — Betrag oben eintragen.";
+    financeKvMeta.textContent = "—";
+    if (financeKvLow) financeKvLow.textContent = "−10 %";
+    if (financeKvHigh) financeKvHigh.textContent = "+10 %";
+    if (financeKvMidLabel) financeKvMidLabel.textContent = "KV";
+  }
+
+  const offerPct = kv && kv > 0 ? Math.min(100, (offertenSum / kv) * 100) : 0;
+  const cashPct = kv && kv > 0 ? Math.min(100, (rechnungenSum / kv) * 100) : 0;
+
+  if (financeOffertenFill) financeOffertenFill.style.width = `${offerPct}%`;
+  if (financeOffertenBar) financeOffertenBar.setAttribute("aria-valuenow", String(Math.round(offerPct)));
+  if (financeOffertenMeta) {
+    financeOffertenMeta.textContent =
+      kv && kv > 0 ? `${offerPct.toFixed(1)} %` : "KV fehlt";
+  }
+  if (financeOffertenDetail) {
+    financeOffertenDetail.textContent =
+      offertenCount > 0
+        ? `${formatCHF(offertenSum)} aus ${offertenCount} Offerte${offertenCount === 1 ? "" : "n"}${
+            kv ? ` · Ziel ${formatCHF(kv)}` : ""
+          }`
+        : "Noch keine Offerten-Beträge ausgelesen.";
+  }
+
+  if (financeRechnungenFill) financeRechnungenFill.style.width = `${cashPct}%`;
+  if (financeRechnungenBar) financeRechnungenBar.setAttribute("aria-valuenow", String(Math.round(cashPct)));
+  if (financeRechnungenMeta) {
+    financeRechnungenMeta.textContent =
+      kv && kv > 0 ? `${cashPct.toFixed(1)} %` : "KV fehlt";
+  }
+  if (financeRechnungenDetail) {
+    financeRechnungenDetail.textContent =
+      rechnungenCount > 0
+        ? `${formatCHF(rechnungenSum)} aus ${rechnungenCount} Rechnung${
+            rechnungenCount === 1 ? "" : "en"
+          }${kv ? ` · vom KV` : ""}`
+        : "Noch keine Rechnungs-Beträge ausgelesen.";
+  }
 }
