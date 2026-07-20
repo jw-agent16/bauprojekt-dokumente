@@ -1,7 +1,6 @@
 const STORAGE_KEY = "bauprojekt-documents";
 const TYPE_OVERRIDES_KEY = "bauprojekt-type-overrides";
 
-const dropzone = document.getElementById("dropzone");
 const fileInput = document.getElementById("file-input");
 const uploadStatus = document.getElementById("upload-status");
 const docPicker = document.getElementById("doc-picker");
@@ -32,7 +31,6 @@ const docExtractKurz = document.getElementById("doc-extract-kurzbeschrieb");
 const pdfViewer = document.getElementById("pdf-viewer");
 const pdfViewerStatus = document.getElementById("pdf-viewer-status");
 const pdfFrame = document.getElementById("pdf-frame");
-const uploadPanel = document.getElementById("upload-panel");
 const docsPanel = document.getElementById("docs-panel");
 
 /** @type {Array<{id: string, name: string, type: string, size: number, uploadedAt: string, source?: string, webViewLink?: string}>} */
@@ -142,11 +140,10 @@ function initNavigation() {
   showView(VIEW_TITLES[initial] ? initial : "dokumente");
 }
 
-function scrollToUpload() {
+function openFilePicker() {
   showView("dokumente");
   history.replaceState(null, "", "#dokumente");
-  uploadPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
-  window.setTimeout(() => fileInput?.click(), 280);
+  fileInput?.click();
 }
 
 /**
@@ -166,7 +163,7 @@ function scrollToDocPicker(type) {
   window.setTimeout(() => docPicker?.focus(), 320);
 }
 
-kpiUpload?.addEventListener("click", () => scrollToUpload());
+kpiUpload?.addEventListener("click", () => openFilePicker());
 
 document.querySelectorAll("[data-scroll-type]").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -179,38 +176,11 @@ renderAll();
 syncDriveFiles();
 initNavigation();
 
-dropzone.addEventListener("click", () => fileInput.click());
-dropzone.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    fileInput.click();
-  }
-});
-
-fileInput.addEventListener("change", () => {
+fileInput?.addEventListener("change", () => {
   if (fileInput.files?.length) {
     handleFiles(fileInput.files);
     fileInput.value = "";
   }
-});
-
-["dragenter", "dragover"].forEach((eventName) => {
-  dropzone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    dropzone.classList.add("is-dragover");
-  });
-});
-
-["dragleave", "drop"].forEach((eventName) => {
-  dropzone.addEventListener(eventName, (event) => {
-    event.preventDefault();
-    dropzone.classList.remove("is-dragover");
-  });
-});
-
-dropzone.addEventListener("drop", (event) => {
-  const files = event.dataTransfer?.files;
-  if (files?.length) handleFiles(files);
 });
 
 docPicker?.addEventListener("change", () => {
@@ -601,6 +571,7 @@ function loadTypeOverrides() {
  * @param {boolean} [isError]
  */
 function setStatus(message, isError = false) {
+  if (!uploadStatus) return;
   uploadStatus.textContent = message;
   uploadStatus.classList.toggle("is-error", isError);
 }

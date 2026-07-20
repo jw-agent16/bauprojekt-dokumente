@@ -269,52 +269,14 @@
             </button>
           </section>
 
-          <section class="panel upload-panel" id="upload-panel" aria-labelledby="upload-heading">
-            <div class="panel-head">
-              <h2 id="upload-heading">PDF hochladen</h2>
-              <p class="panel-hint">Nur PDF-Dateien · am Computer per Drag &amp; Drop, am iPhone über Dateien</p>
-            </div>
-
-            <div
-              id="dropzone"
-              class="dropzone"
-              role="button"
-              tabindex="0"
-              aria-describedby="dropzone-hint iphone-upload-tip"
-            >
-              <input
-                id="file-input"
-                type="file"
-                accept="application/pdf,.pdf"
-                multiple
-                hidden
-              />
-              <div class="dropzone-content">
-                <span class="dropzone-icon" aria-hidden="true">
-                  <svg width="36" height="36" viewBox="0 0 40 40" fill="none">
-                    <path
-                      d="M20 8v16m0-16l-6 6m6-6l6 6M8 28.5V30a2 2 0 002 2h20a2 2 0 002-2v-1.5"
-                      stroke="currentColor"
-                      stroke-width="1.75"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
-                </span>
-                <p class="dropzone-title">PDF auswählen</p>
-                <p id="dropzone-hint" class="dropzone-hint">
-                  Tippen zum Auswählen · am Mac auch Drag &amp; Drop
-                </p>
-              </div>
-            </div>
-            <p id="iphone-upload-tip" class="upload-tip">
-              <strong>iPhone:</strong> Im PDF auf Teilen tippen →
-              <em>In Dateien speichern</em> → hier tippen → das PDF unter
-              <em>Zuletzt</em> wählen. Direktes Teilen in die App geht bei
-              Web-Apps auf dem iPhone leider nicht.
-            </p>
-            <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
-          </section>
+          <input
+            id="file-input"
+            type="file"
+            accept="application/pdf,.pdf"
+            multiple
+            hidden
+          />
+          <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
 
           <section class="panel table-panel" id="docs-panel" aria-labelledby="docs-heading">
             <div class="panel-head panel-head-row">
