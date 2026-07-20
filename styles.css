@@ -820,9 +820,13 @@ select {
 
 .upload-status {
   min-height: 1.25em;
-  margin: 0.75rem 0 0;
+  margin: -0.35rem 0 0;
   font-size: 0.88rem;
   color: var(--success);
+}
+
+.upload-status:empty {
+  display: none;
 }
 
 .upload-status.is-error {
