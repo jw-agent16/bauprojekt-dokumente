@@ -274,6 +274,17 @@ select {
   color: var(--ink-muted);
   background: var(--surface);
   border: 1px solid var(--line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.icon-btn-glyph {
+  display: block;
+  flex-shrink: 0;
 }
 
 .icon-btn:hover {
@@ -380,12 +391,6 @@ select {
   color: rgba(232, 210, 168, 0.88);
 }
 
-.home-lead {
-  margin: 0;
-  color: rgba(232, 210, 168, 0.55);
-  font-size: 0.95rem;
-}
-
 .home-sketch-solo {
   margin: 0;
   overflow: hidden;
@@ -439,6 +444,13 @@ select {
     background: rgba(26, 50, 50, 0.45);
     border-color: rgba(201, 163, 106, 0.35);
     color: #e8d2a8;
+    width: 40px;
+    height: 40px;
+  }
+
+  body:has(#view-home.is-active) .icon-btn-glyph {
+    width: 20px;
+    height: 20px;
   }
 
   .home-stage {
