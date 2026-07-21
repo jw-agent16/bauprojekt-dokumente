@@ -1,6 +1,9 @@
 const STORAGE_KEY = "bauprojekt-documents";
 const TYPE_OVERRIDES_KEY = "bauprojekt-type-overrides";
 const KV_STORAGE_KEY = "bauprojekt-kv";
+const READ_STATE_KEY = "bauprojekt-read-ids";
+const KNOWN_IDS_KEY = "bauprojekt-known-ids";
+const NOTIFY_PERMISSION_KEY = "bauprojekt-notify-asked";
 
 const fileInput = document.getElementById("file-input");
 const uploadStatus = document.getElementById("upload-status");
@@ -40,6 +43,7 @@ const pdfViewer = document.getElementById("pdf-viewer");
 const pdfViewerStatus = document.getElementById("pdf-viewer-status");
 const pdfFrame = document.getElementById("pdf-frame");
 const docsPanel = document.getElementById("docs-panel");
+const toastStack = document.getElementById("toast-stack");
 const kvAmountInput = document.getElementById("kv-amount-input");
 const kvFileInput = document.getElementById("kv-file-input");
 const kvFileName = document.getElementById("kv-file-name");
@@ -57,6 +61,12 @@ const financeRechnungenFill = document.getElementById("finance-rechnungen-fill")
 const financeRechnungenBar = document.getElementById("finance-rechnungen-bar");
 const financeRechnungenDetail = document.getElementById("finance-rechnungen-detail");
 
+/** @type {Record<string, true>} */
+let readIds = loadReadIds();
+/** @type {Set<string>} */
+let knownIds = loadKnownIds();
+/** @type {boolean} */
+let knownIdsInitialized = knownIds.size > 0;
 /** @type {{ amount: number | null, fileName: string }} */
 let kvState = loadKvState();
 
@@ -131,6 +141,9 @@ function showView(viewId) {
   document.title = `Bauprojekt S9 — ${title}`;
   if (viewId === "finanzen") renderFinanzen();
   if (viewId === "plaene") renderPlaene();
+  if (viewId === "dokumente") {
+    markDocumentsPageRead();
+  }
 }
 
 function initNavigation() {
@@ -255,6 +268,20 @@ kvFileInput?.addEventListener("change", () => {
 renderAll();
 syncDriveFiles();
 initNavigation();
+initNotifications();
+
+window.addEventListener("message", (event) => {
+  if (event.data?.type === "open-documents") {
+    showView("dokumente");
+    history.replaceState(null, "", "#dokumente");
+  }
+});
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {
+    /* ignore offline SW errors */
+  });
+}
 
 fileInput?.addEventListener("change", () => {
   if (fileInput.files?.length) {
@@ -264,7 +291,10 @@ fileInput?.addEventListener("change", () => {
 });
 
 docPicker?.addEventListener("change", () => {
+  const id = docPicker.value;
+  if (id) markDocumentRead(id);
   renderSelectedDocument();
+  renderUnreadBadge();
 });
 
 docDetailType?.addEventListener("change", () => {
@@ -428,6 +458,7 @@ function handleFiles(fileList) {
 
   localDocuments = [...added, ...localDocuments];
   persistLocalDocuments();
+  registerDocuments(added, { notify: true });
   renderAll();
 
   let message =
@@ -501,6 +532,203 @@ function renderAll() {
   renderSelectedDocument();
   renderFinanzen();
   renderPlaene();
+  renderUnreadBadge();
+}
+
+function isDocumentRead(id) {
+  return Boolean(readIds[id]);
+}
+
+function getUnreadDocuments() {
+  return getAllDocuments().filter((doc) => !isDocumentRead(doc.id));
+}
+
+function persistReadIds() {
+  localStorage.setItem(READ_STATE_KEY, JSON.stringify(readIds));
+}
+
+function loadReadIds() {
+  try {
+    const raw = localStorage.getItem(READ_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistKnownIds() {
+  localStorage.setItem(KNOWN_IDS_KEY, JSON.stringify([...knownIds]));
+}
+
+function loadKnownIds() {
+  try {
+    const raw = localStorage.getItem(KNOWN_IDS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/**
+ * @param {string} id
+ */
+function markDocumentRead(id) {
+  if (!id || readIds[id]) return;
+  readIds[id] = true;
+  persistReadIds();
+}
+
+function markDocumentsPageRead() {
+  const docs = getAllDocuments();
+  let changed = false;
+  docs.forEach((doc) => {
+    if (!readIds[doc.id]) {
+      readIds[doc.id] = true;
+      changed = true;
+    }
+  });
+  if (changed) {
+    persistReadIds();
+    renderUnreadBadge();
+    renderDocumentPicker();
+  }
+}
+
+function renderUnreadBadge() {
+  const unread = getUnreadDocuments().length;
+  if (!navBadge) return;
+  if (unread > 0) {
+    navBadge.hidden = false;
+    navBadge.textContent = String(unread);
+    navBadge.classList.add("is-unread");
+    navBadge.title = `${unread} ungelesen`;
+  } else {
+    navBadge.hidden = true;
+    navBadge.classList.remove("is-unread");
+    navBadge.removeAttribute("title");
+  }
+}
+
+/**
+ * Track newly appeared documents → unread + notify.
+ * @param {Array<{id: string, name: string}>} docs
+ * @param {{ notify?: boolean }} [options]
+ */
+function registerDocuments(docs, options = {}) {
+  const notify = options.notify !== false;
+  const newcomers = [];
+
+  docs.forEach((doc) => {
+    if (!knownIds.has(doc.id)) {
+      newcomers.push(doc);
+      knownIds.add(doc.id);
+    }
+  });
+
+  if (!knownIdsInitialized) {
+    // First sync: treat current set as already seen/read (no flood of toasts)
+    docs.forEach((doc) => {
+      readIds[doc.id] = true;
+    });
+    knownIdsInitialized = true;
+    persistReadIds();
+    persistKnownIds();
+    renderUnreadBadge();
+    return;
+  }
+
+  if (newcomers.length > 0) {
+    persistKnownIds();
+    renderUnreadBadge();
+    renderDocumentPicker();
+    if (notify) notifyNewDocuments(newcomers);
+  }
+}
+
+/**
+ * @param {Array<{id: string, name: string}>} docs
+ */
+function notifyNewDocuments(docs) {
+  const count = docs.length;
+  const title = count === 1 ? "Neues Dokument" : `${count} neue Dokumente`;
+  const body =
+    count === 1
+      ? docs[0].name
+      : docs
+          .slice(0, 3)
+          .map((d) => d.name)
+          .join(", ") + (count > 3 ? " …" : "");
+
+  showToast(title, body);
+
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    try {
+      const n = new Notification(title, {
+        body,
+        icon: "/assets/icon-s9-192.png",
+        badge: "/assets/icon-s9-192.png",
+        tag: "bauprojekt-new-docs",
+        data: { url: "/#dokumente" },
+      });
+      n.onclick = () => {
+        window.focus();
+        showView("dokumente");
+        history.replaceState(null, "", "#dokumente");
+        n.close();
+      };
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * @param {string} title
+ * @param {string} [body]
+ */
+function showToast(title, body = "") {
+  if (!toastStack) return;
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<p class="toast-title"></p><p class="toast-body"></p>`;
+  el.querySelector(".toast-title").textContent = title;
+  const bodyEl = el.querySelector(".toast-body");
+  if (body) bodyEl.textContent = body;
+  else bodyEl.remove();
+
+  el.addEventListener("click", () => {
+    showView("dokumente");
+    history.replaceState(null, "", "#dokumente");
+    dismissToast(el);
+  });
+
+  toastStack.appendChild(el);
+  window.setTimeout(() => dismissToast(el), 6000);
+}
+
+/**
+ * @param {HTMLElement} el
+ */
+function dismissToast(el) {
+  if (!el.isConnected) return;
+  el.classList.add("is-leaving");
+  window.setTimeout(() => el.remove(), 220);
+}
+
+function initNotifications() {
+  if (typeof Notification === "undefined") return;
+  if (Notification.permission !== "default") return;
+  if (localStorage.getItem(NOTIFY_PERMISSION_KEY)) return;
+
+  // Ask once after short delay so it doesn't block first paint
+  window.setTimeout(() => {
+    localStorage.setItem(NOTIFY_PERMISSION_KEY, "1");
+    Notification.requestPermission().catch(() => {});
+  }, 2500);
 }
 
 function renderKpis() {
@@ -508,20 +736,16 @@ function renderKpis() {
   const offerten = documents.filter((doc) => doc.type === "Offerte").length;
   const rechnungen = documents.filter((doc) => doc.type === "Rechnung").length;
   const plaene = documents.filter((doc) => doc.type === "Bauplan").length;
+  const unread = getUnreadDocuments().length;
 
   if (kpiOfferten) kpiOfferten.textContent = String(offerten);
   if (kpiRechnungen) kpiRechnungen.textContent = String(rechnungen);
   if (kpiPlaene) kpiPlaene.textContent = String(plaene);
 
   docCount.textContent =
-    documents.length === 1 ? "1 Dokument" : `${documents.length} Dokumente`;
-
-  if (documents.length > 0) {
-    navBadge.hidden = false;
-    navBadge.textContent = String(documents.length);
-  } else {
-    navBadge.hidden = true;
-  }
+    documents.length === 1
+      ? `1 Dokument${unread ? ` · ${unread} ungelesen` : ""}`
+      : `${documents.length} Dokumente${unread ? ` · ${unread} ungelesen` : ""}`;
 
   if (navBadgePlaene) {
     if (plaene > 0) {
@@ -531,6 +755,8 @@ function renderKpis() {
       navBadgePlaene.hidden = true;
     }
   }
+
+  renderUnreadBadge();
 }
 
 function renderPlaene() {
@@ -561,7 +787,9 @@ function renderPlaene() {
       history.replaceState(null, "", "#dokumente");
       if (docPicker) {
         docPicker.value = doc.id;
+        markDocumentRead(doc.id);
         renderSelectedDocument();
+        renderUnreadBadge();
         docsPanel?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
@@ -577,7 +805,9 @@ function renderDocumentPicker() {
   documents.forEach((doc) => {
     const option = document.createElement("option");
     option.value = doc.id;
-    option.textContent = `${doc.name} · ${doc.type}`;
+    const unread = !isDocumentRead(doc.id);
+    option.textContent = `${unread ? "● " : ""}${doc.name} · ${doc.type}`;
+    if (unread) option.classList.add("is-unread");
     docPicker.appendChild(option);
   });
 
@@ -684,6 +914,7 @@ async function syncDriveFiles() {
       };
     });
 
+    registerDocuments(driveDocuments, { notify: true });
     renderAll();
     setDriveStatus(
       driveDocuments.length === 0
